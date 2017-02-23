@@ -33,10 +33,25 @@ end
 
 videos = Hash.new(0)
 
+cache_requests = Hash.new { |hash, key| hash[key] = Array.new(n_videos, 0) }
+
 n_requests.times do |i|
+  print("\r#{i}/#{n_requests}             ") if i % 100 == 0
   r = file.gets.split(' ').map(&:to_i)
   request_video = r[0]
+  request_endpoint = r[1]
   request_amount = r[2]
+
+  # if connected
+  # for each cache
+  n_caches.times do |j|
+    # print("\r#{i}/#{n_requests} #{j}/#{n_caches}             ")
+    # if endpoint is connected to cache
+    cache_has_endpoint = endpoints[request_endpoint].keys.include?(j)
+    if cache_has_endpoint
+      cache_requests[j][request_video] = 1
+    end
+  end
 
   videos[request_video] += request_amount
 end
@@ -57,9 +72,10 @@ n_caches.times do |i|
   retries = 0
   videos_copy = videos.dup
   while rem_size > 0 && retries < 1000
-    print("\r#{i}/#{n_caches}    #{videos_copy.size}")
-    video = videos_copy[rand.rand(videos_copy.size/4)][0]
+    video = videos_copy[rand.rand([videos_copy.size, 10].min)][0]
     video_size = video_sizes[video]
+    next if video_size > (cache_size / 5)
+    next if cache_requests[i][video] == 0
 
     if rem_size - video_size >= 0 && !caches[i].include?(video)
       videos_copy.pop
@@ -70,8 +86,6 @@ n_caches.times do |i|
     end
   end
 end
-
-file = File.new("#{infile}.out", "w")
 
 
 File.open("#{infile}.out", "w") do |file|
